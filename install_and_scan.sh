@@ -8,6 +8,12 @@ echo "Preparando o FlexScanner..."
 pkg update -y
 pkg install -y python coreutils apksigner
 
+# Base de fusos horários usada pelo Python. O scanner também possui fallback
+# interno, então uma falha aqui não impede a varredura.
+if ! pkg install -y tzdata; then
+    python -m pip install --upgrade tzdata || true
+fi
+
 if [ ! -d "$HOME/storage/shared" ]; then
     echo
     echo "O Android vai pedir permissão para o Termux acessar os arquivos."

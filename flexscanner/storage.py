@@ -3,16 +3,15 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 from typing import Iterable
 
 from .models import CoverageItem, Finding
 from .rules import Rules
-from .util import safe_realpath
+from .util import safe_realpath, sao_paulo_timezone
 
 MAX_TEXT_FILE_BYTES = 8 * 1024 * 1024
 MAX_FILES_TO_SCAN = 120_000
-SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
+SAO_PAULO_TZ = sao_paulo_timezone()
 
 
 def _format_epoch_sp(value: float | int | None) -> str | None:

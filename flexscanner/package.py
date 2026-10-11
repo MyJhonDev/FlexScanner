@@ -4,11 +4,10 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .models import CoverageItem, Finding
 from .rules import Rules
-from .util import run_cmd, sha256_file
+from .util import run_cmd, safe_timezone, sao_paulo_timezone, sha256_file
 
 SAO_PAULO_TZ = "America/Sao_Paulo"
 
@@ -112,12 +111,8 @@ def _to_sao_paulo(raw: str | None, source_timezone: str | None) -> str | None:
     if parsed is None:
         return raw
 
-    try:
-        source = ZoneInfo(source_timezone) if source_timezone else ZoneInfo(SAO_PAULO_TZ)
-    except ZoneInfoNotFoundError:
-        source = ZoneInfo(SAO_PAULO_TZ)
-
-    target = ZoneInfo(SAO_PAULO_TZ)
+    source = safe_timezone(source_timezone)
+    target = sao_paulo_timezone()
     localized = parsed.replace(tzinfo=source).astimezone(target)
     return localized.strftime("%d/%m/%Y às %H:%M:%S")
 

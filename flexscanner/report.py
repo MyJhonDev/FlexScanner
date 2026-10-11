@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from .models import CoverageItem, Finding
+from .util import sao_paulo_timezone
 
 
 RISK_ORDER = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
@@ -117,7 +117,7 @@ def build_report(
         "scanner": "FlexScanner",
         "version": scanner_version,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "timestamp_sao_paulo": datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y às %H:%M:%S"),
+        "timestamp_sao_paulo": datetime.now(sao_paulo_timezone()).strftime("%d/%m/%Y às %H:%M:%S"),
         "mode": "somente-leitura",
         "privacy": "O FlexScanner não envia o conteúdo dos arquivos analisados.",
         "limitations": [

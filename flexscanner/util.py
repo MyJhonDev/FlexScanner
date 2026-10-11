@@ -5,7 +5,29 @@ import os
 import shutil
 import subprocess
 import sys
+from datetime import timedelta, timezone, tzinfo
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+
+def sao_paulo_timezone() -> tzinfo:
+    """Retorna America/Sao_Paulo e nunca derruba o scanner se tzdata faltar."""
+    try:
+        return ZoneInfo("America/Sao_Paulo")
+    except ZoneInfoNotFoundError:
+        # O Brasil não usa horário de verão desde 2019. Para aparelhos sem
+        # base tzdata, UTC-03:00 mantém o relatório utilizável no Termux.
+        return timezone(timedelta(hours=-3), name="America/Sao_Paulo")
+
+
+def safe_timezone(name: str | None) -> tzinfo:
+    """Tenta carregar o fuso informado; usa São Paulo como fallback seguro."""
+    if name:
+        try:
+            return ZoneInfo(name)
+        except ZoneInfoNotFoundError:
+            pass
+    return sao_paulo_timezone()
 
 
 def run_cmd(args: list[str], timeout: int = 12) -> tuple[int, str]:
