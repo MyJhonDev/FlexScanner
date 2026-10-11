@@ -1,0 +1,63 @@
+{
+  "roblox_package": "com.roblox.client",
+  "trusted_installers": [
+    "com.android.vending"
+  ],
+  "executor_names": [
+    "delta",
+    "codex",
+    "arceus",
+    "arceus x",
+    "fluxus",
+    "hydrogen",
+    "krnl",
+    "synapse",
+    "executor",
+    "executors"
+  ],
+  "high_signal_directories": [
+    "autoexec",
+    "autoexecute"
+  ],
+  "medium_signal_directories": [
+    "workspace",
+    "scripts",
+    "script",
+    "configs",
+    "config"
+  ],
+  "trash_directory_names": [
+    ".trash",
+    ".trash-1000",
+    ".trash-1001",
+    "trash",
+    ".recyclebin",
+    "recyclebin",
+    ".recycle"
+  ],
+  "script_extensions": [
+    ".lua",
+    ".luau",
+    ".txt"
+  ],
+  "lua_indicators": {
+    "loadstring": "\\bloadstring\\s*\\(",
+    "httpget": "(?:game\\s*[:.]\\s*HttpGet|HttpGet\\s*\\()",
+    "getgenv": "\\bgetgenv\\s*\\(",
+    "hookmetamethod": "\\bhookmetamethod\\s*\\(",
+    "getrawmetatable": "\\bgetrawmetatable\\s*\\(",
+    "getgc": "\\bgetgc\\s*\\(",
+    "getconnections": "\\bgetconnections\\s*\\(",
+    "firesignal": "\\bfiresignal\\s*\\(",
+    "firetouchinterest": "\\bfiretouchinterest\\s*\\(",
+    "sethiddenproperty": "\\bsethiddenproperty\\s*\\(",
+    "queue_on_teleport": "\\bqueue_on_teleport\\s*\\(",
+    "identifyexecutor": "\\bidentifyexecutor\\s*\\(",
+    "filesystem_api": "\\b(?:isfile|readfile|writefile|appendfile|makefolder|delfile|delfolder)\\s*\\("
+  },
+  "game_context_terms": [
+    "illegal soccer",
+    "futebol proibido"
+  ],
+  "official_roblox_cert_sha256": []
+}
