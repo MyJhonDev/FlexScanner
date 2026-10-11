@@ -22,8 +22,52 @@ def _query_installer(package: str) -> tuple[str | None, str]:
         rc, output = run_cmd(command)
         if rc == 0 and package in output:
             match = re.search(r"installer=([^\s]+)", output)
-            return (match.group(1) if match else None), output
+            value = match.group(1) if match else None
+            if value and value.lower() in {"null", "none"}:
+                value = None
+            return value, output
     return None, ""
+
+
+def _parse_dumpsys_install_source(output: str) -> dict:
+    def field(name: str) -> str | None:
+        match = re.search(rf"(?:^|\n)\s*{re.escape(name)}=([^\n\r]+)", output)
+        if not match:
+            return None
+        value = match.group(1).strip()
+        if value.lower() in {"null", "none", ""}:
+            return None
+        return value
+
+    return {
+        "installer_package": field("installerPackageName"),
+        "initiating_package": field("initiatingPackageName"),
+        "originating_package": field("originatingPackageName"),
+        "package_source_raw": field("packageSource"),
+    }
+
+
+def _classify_install_source(
+    installer: str | None,
+    initiating: str | None,
+    trusted_installers: set[str],
+) -> tuple[str, str]:
+    installer_l = installer.lower() if installer else None
+    initiating_l = initiating.lower() if initiating else None
+
+    if installer_l in trusted_installers:
+        return "play-store", "Google Play Store"
+
+    if installer_l == "com.android.shell" or initiating_l == "com.android.shell":
+        return "adb-shell", "ADB / shell"
+
+    if installer:
+        return "external", "Instalação externa / outro instalador"
+
+    if initiating:
+        return "external", "Instalação externa / origem alternativa"
+
+    return "unknown", "Origem não identificada"
 
 
 def _query_apk_paths(package: str) -> list[str]:
@@ -88,6 +132,7 @@ def _query_package_metadata(package: str) -> dict:
         "first_install_time_sp": None,
         "last_update_time_sp": None,
         "device_timezone": _device_timezone(),
+        "install_source": {},
     }
     if rc != 0:
         return result
@@ -105,6 +150,8 @@ def _query_package_metadata(package: str) -> dict:
         result["first_install_time_raw"] = first.group(1).strip()
     if updated:
         result["last_update_time_raw"] = updated.group(1).strip()
+
+    result["install_source"] = _parse_dumpsys_install_source(output)
 
     result["first_install_time_sp"] = _to_sao_paulo(
         result["first_install_time_raw"], result["device_timezone"]
@@ -139,15 +186,32 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
     installer, installer_raw = _query_installer(package)
     apk_paths = _query_apk_paths(package)
     metadata = _query_package_metadata(package)
+    source_meta = metadata.get("install_source", {}) or {}
+    dumpsys_installer = source_meta.get("installer_package")
+    if not installer and dumpsys_installer:
+        installer = dumpsys_installer
+
+    initiating = source_meta.get("initiating_package")
+    originating = source_meta.get("originating_package")
+    source_code, source_label = _classify_install_source(
+        installer, initiating, rules.trusted_installers
+    )
+
     installed = bool(apk_paths or installer_raw or metadata.get("version_name") or metadata.get("first_install_time_raw"))
 
     result = {
         "package": package,
         "installed": installed,
         "installer": installer,
+        "initiating_package": initiating,
+        "originating_package": originating,
+        "install_source_code": source_code,
+        "install_source_label": source_label,
         "apk_paths": apk_paths,
         "apk_sha256": {},
         "certificates": {},
+        "signature_status": "not-verified",
+        "official_signature_comparison": "not-configured",
         **metadata,
     }
 
@@ -171,27 +235,31 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
         )
     )
 
-    if installer is None:
+    if source_code == "unknown":
         findings.append(
             Finding(
                 risk="LOW",
                 score=8,
                 category="Integridade do Roblox",
-                title="Instalador do Roblox não identificado",
+                title="Origem da instalação não identificada",
                 path=package,
-                detail="O Android não informou qual aplicativo instalou o Roblox. Esse resultado é inconclusivo.",
+                detail="O Android não informou uma origem confiável para a instalação do Roblox.",
             )
         )
-    elif installer.lower() not in rules.trusted_installers:
+    elif source_code in {"external", "adb-shell"}:
+        evidence = [x for x in (installer, initiating, originating) if x]
         findings.append(
             Finding(
                 risk="MEDIUM",
                 score=22,
                 category="Integridade do Roblox",
-                title="Instalador inesperado",
+                title="Roblox instalado fora da Play Store",
                 path=package,
-                detail=f"Instalador informado pelo Android: {installer}. Instalação externa, sozinha, não prova modificação.",
-                evidence=[installer],
+                detail=(
+                    f"Origem identificada como {source_label}. "
+                    "Isso confirma uma instalação externa, mas não confirma sozinho que o APK foi modificado."
+                ),
+                evidence=sorted(set(evidence)),
             )
         )
 
@@ -208,8 +276,17 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
             cert_info = _apksigner_certificate(path)
             result["certificates"][raw] = cert_info
 
+            if cert_info.get("status") == "verified":
+                result["signature_status"] = "valid"
+
             certs = set(cert_info.get("cert_sha256", []))
             expected = rules.official_roblox_cert_sha256
+            if expected and certs:
+                if certs & expected:
+                    result["official_signature_comparison"] = "match"
+                else:
+                    result["official_signature_comparison"] = "mismatch"
+
             if expected and certs and not (certs & expected):
                 findings.append(
                     Finding(

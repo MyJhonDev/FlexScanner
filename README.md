@@ -4,6 +4,12 @@ FlexScanner é uma ferramenta para Android feita para rodar no Termux e ajudar n
 
 Ele faz a varredura das áreas que consegue acessar, organiza os achados por nível de risco e mostra um veredito final de forma simples.
 
+## Origem da instalação
+
+O FlexScanner identifica se o Roblox foi instalado pela Google Play Store ou por uma origem externa. Quando o Android fornece os dados, também mostra qual pacote iniciou a instalação.
+
+Uma instalação externa aparece como indício, não como confirmação de APK modificado. A confirmação forte depende da assinatura do APK ser comparada com uma assinatura oficial confiável configurada no scanner.
+
 ## O que ele verifica
 
 - pastas conhecidas de executores;

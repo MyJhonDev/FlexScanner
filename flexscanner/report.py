@@ -210,7 +210,27 @@ def render_text(report: dict, use_color: bool = False) -> str:
         lines.append(f"Versão            : {package_info.get('version_name') or 'indisponível'}")
         lines.append(f"Instalado em      : {package_info.get('first_install_time_sp') or 'indisponível'}")
         lines.append(f"Última atualização: {package_info.get('last_update_time_sp') or 'indisponível'}")
+
+        source_code = package_info.get("install_source_code")
+        source_label = package_info.get("install_source_label") or "Origem não identificada"
+        source_color = GREEN if source_code == "play-store" else YELLOW if source_code in {"external", "adb-shell"} else RED
+        lines.append(f"Origem            : {source_color}{source_label}{RESET}")
         lines.append(f"Instalador        : {package_info.get('installer') or 'não identificado'}")
+        if package_info.get("initiating_package") and package_info.get("initiating_package") != package_info.get("installer"):
+            lines.append(f"Instalação iniciada por: {package_info.get('initiating_package')}")
+        if package_info.get("originating_package"):
+            lines.append(f"Arquivo/origem    : {package_info.get('originating_package')}")
+
+        sig = package_info.get("signature_status")
+        comparison = package_info.get("official_signature_comparison")
+        if comparison == "mismatch":
+            lines.append(f"Integridade APK   : {RED}{BOLD}ASSINATURA DIFERENTE DA OFICIAL{RESET}")
+        elif comparison == "match":
+            lines.append(f"Integridade APK   : {GREEN}ASSINATURA OFICIAL CONFIRMADA{RESET}")
+        elif sig == "valid":
+            lines.append(f"Integridade APK   : assinatura válida; comparação oficial não configurada")
+        else:
+            lines.append(f"Integridade APK   : não verificada")
 
     for key, label in (("Android/data", "Pasta data"), ("Android/obb", "Pasta OBB")):
         info = android_dirs.get(key, {})

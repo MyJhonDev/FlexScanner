@@ -2,6 +2,7 @@ import unittest
 
 from flexscanner.models import CoverageItem, Finding
 from flexscanner.report import calculate_verdict
+from flexscanner.package import _classify_install_source
 
 
 class VerdictTests(unittest.TestCase):
@@ -28,6 +29,21 @@ class VerdictTests(unittest.TestCase):
             [CoverageItem("Android/data", "/x", "not-verified", "blocked")],
         )
         self.assertEqual(verdict["coverage_warnings"], 1)
+
+    def test_install_source_classification(self):
+        trusted = {"com.android.vending"}
+        self.assertEqual(
+            _classify_install_source("com.android.vending", None, trusted)[0],
+            "play-store",
+        )
+        self.assertEqual(
+            _classify_install_source("com.example.installer", None, trusted)[0],
+            "external",
+        )
+        self.assertEqual(
+            _classify_install_source(None, "com.android.shell", trusted)[0],
+            "adb-shell",
+        )
 
 
 if __name__ == "__main__":
