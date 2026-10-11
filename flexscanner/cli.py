@@ -6,6 +6,7 @@ from pathlib import Path
 
 from . import __version__
 from .package import inspect_roblox_package
+from .delta import inspect_delta_executor
 from .report import build_report, render_text, save_json, save_text
 from .rules import Rules
 from .storage import inspect_android_app_dirs, scan_shared_storage
@@ -42,6 +43,10 @@ def main() -> int:
     findings.extend(storage_findings)
     coverage.extend(storage_coverage)
 
+    delta_findings, delta_coverage, delta_info = inspect_delta_executor(rules)
+    findings.extend(delta_findings)
+    coverage.extend(delta_coverage)
+
     package_findings, package_coverage, package_info = inspect_roblox_package(rules)
     findings.extend(package_findings)
     coverage.extend(package_coverage)
@@ -56,6 +61,7 @@ def main() -> int:
         storage_stats=storage_stats,
         package_info=package_info,
         android_dirs=android_dirs,
+        delta_info=delta_info,
         scanner_version=__version__,
     )
 

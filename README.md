@@ -10,6 +10,21 @@ O FlexScanner identifica se o Roblox foi instalado pela Google Play Store ou por
 
 Uma instalação externa aparece como indício, não como confirmação de APK modificado. A confirmação forte depende da assinatura do APK ser comparada com uma assinatura oficial confiável configurada no scanner.
 
+
+## Delta Executor
+
+O FlexScanner faz uma análise específica da pasta `Delta` quando ela existe no armazenamento compartilhado. A procura não diferencia maiúsculas e minúsculas, então nomes como `Delta`, `delta` ou `DELTA` são tratados da mesma forma.
+
+Dentro dela, o scanner verifica principalmente:
+
+- `Scripts`: encontra scripts salvos mesmo quando o arquivo não possui extensão `.lua`;
+- `Autoexecute`, `autoexec` e variações: identifica arquivos configurados para execução automática;
+- `Crashes`: procura logs do próprio Delta com sinais como `Scripts Ran: true`, `Last Action: EXECUTE SCRIPT`, `Game ID`, `Place ID` e `Script Log`;
+- `Workspace`: procura scripts Lua, arquivos relacionados ao jogo e registros de chamadas como `HttpGet`, `loadstring` e `request`;
+- estrutura interna da pasta: ajuda a diferenciar uma pasta chamada Delta de uma instalação real do executor.
+
+Quando um crash log confirma execução, o FlexScanner mostra a data no horário de São Paulo, a quantidade de entradas registradas no `Script Log`, IDs do jogo/place quando existirem e os domínios encontrados. O conteúdo completo do script não é exibido no relatório.
+
 ## O que ele verifica
 
 - pastas conhecidas de executores;

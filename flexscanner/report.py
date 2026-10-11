@@ -107,6 +107,7 @@ def build_report(
     storage_stats: dict,
     package_info: dict,
     android_dirs: dict,
+    delta_info: dict | None,
     scanner_version: str,
 ) -> dict:
     findings = dedupe_findings(findings)
@@ -131,6 +132,7 @@ def build_report(
         "storage_stats": storage_stats,
         "roblox_package": package_info,
         "android_app_dirs": android_dirs,
+        "delta_executor": delta_info or {},
     }
 
 
@@ -246,6 +248,25 @@ def render_text(report: dict, use_color: bool = False) -> str:
             lines.append(f"  Última alteração : {info['modified_sp']}")
         if info.get("files_seen") is not None:
             lines.append(f"  Arquivos vistos  : {info.get('files_seen', 0)}")
+
+    delta_info = report.get("delta_executor", {})
+    section("DELTA EXECUTOR", CYAN)
+    if delta_info.get("detected"):
+        lines.append(f"Delta encontrado   : {RED}{BOLD}SIM{RESET}")
+        roots = delta_info.get("roots") or []
+        if roots:
+            lines.append(f"Caminho            : {roots[0]}")
+            for extra in roots[1:]:
+                lines.append(f"                    {extra}")
+        lines.append(f"Scripts salvos     : {delta_info.get('scripts_saved', 0)}")
+        lines.append(f"Scripts analisados : {delta_info.get('scripts_analyzed', 0)}")
+        lines.append(f"Arquivos autoexec  : {delta_info.get('autoexec_files', 0)}")
+        lines.append(f"Crash logs         : {delta_info.get('crash_logs', 0)}")
+        lines.append(f"Logs com execução  : {delta_info.get('execution_logs', 0)}")
+        lines.append(f"Arquivos Workspace : {delta_info.get('workspace_files', 0)}")
+        lines.append(f"Lua no Workspace   : {delta_info.get('workspace_lua_files', 0)}")
+    else:
+        lines.append(f"Delta encontrado   : {GREEN}NÃO{RESET}")
 
     risk_sections = (
         ("HIGH", "ALTO RISCO", RED),

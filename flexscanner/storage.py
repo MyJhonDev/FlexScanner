@@ -85,7 +85,7 @@ def safe_walk(root: Path) -> Iterable[tuple[str, list[str], list[str]]]:
 
 
 def _is_under_trash(path_parts: tuple[str, ...], rules: Rules) -> bool:
-    lowered = {part.lower() for part in path_parts}
+    lowered = {part.casefold() for part in path_parts}
     return any(name in lowered for name in rules.trash_directory_names)
 
 
@@ -127,14 +127,20 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
             stats["directories_seen"] += 1
             current_path = Path(current)
             under_trash = _is_under_trash(current_path.parts, rules)
+            under_delta = any(part.casefold() == "delta" for part in current_path.parts)
 
             # Do not traverse symlinked directories.
             dirs[:] = [d for d in dirs if not (current_path / d).is_symlink()]
 
             for directory in dirs:
-                lower = directory.lower()
+                lower = directory.casefold()
                 full = current_path / directory
                 executor_hits = rules.match_name_tokens(directory)
+
+                # A pasta Delta e suas subpastas recebem uma análise dedicada em delta.py.
+                # Evita duplicar no relatório os mesmos sinais estruturais.
+                if lower == "delta" or under_delta:
+                    continue
 
                 if lower in rules.high_signal_directories:
                     findings.append(

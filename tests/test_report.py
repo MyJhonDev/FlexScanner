@@ -48,3 +48,42 @@ class VerdictTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class DeltaEvidenceTests(unittest.TestCase):
+    def test_delta_saved_script_without_extension_is_analyzed(self):
+        import tempfile
+        from pathlib import Path
+        from flexscanner.delta import _scan_saved_scripts
+        from flexscanner.rules import Rules
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "Delta"
+            scripts = root / "Scripts"
+            scripts.mkdir(parents=True)
+            (scripts / "FUTEBOL PROIBIDO").write_text(
+                'loadstring(readfile("futebol_proibido.lua"))()',
+                encoding="utf-8",
+            )
+            rules = Rules(Path(__file__).resolve().parents[1] / "config" / "signatures.json")
+            findings, info = _scan_saved_scripts(root, rules)
+            self.assertEqual(info["saved_count"], 1)
+            self.assertEqual(info["analyzed_count"], 1)
+            self.assertTrue(any(f.risk == "HIGH" for f in findings))
+
+    def test_delta_crash_log_confirms_execution(self):
+        import tempfile
+        from pathlib import Path
+        from flexscanner.delta import _scan_crash_logs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "Delta"
+            crashes = root / "Crashes"
+            crashes.mkdir(parents=True)
+            (crashes / "Crash-test.txt").write_text(
+                """Basic Info:\nScripts Ran: true\nLast Action: EXECUTE SCRIPT\nGame ID: 123\nPlace ID: 456\nCrash Info:\nTimestamp (Unix): 1791615733\nScript Log:\n#0: loadstring(game:HttpGet(\"https://example.com/a\"))()\nStacktrace:\n#0: example\n""",
+                encoding="utf-8",
+            )
+            findings, info = _scan_crash_logs(root)
+            self.assertEqual(info["execution_logs"], 1)
+            self.assertTrue(any(f.category == "Execução confirmada" for f in findings))
+            self.assertTrue(any("Script Log: 1 entrada(s)" in f.evidence for f in findings))
