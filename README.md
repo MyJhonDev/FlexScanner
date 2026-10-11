@@ -64,9 +64,13 @@ COBERTURA DA VARREDURA
 VEREDITO FINAL
 ```
 
-O resultado final pode indicar que não foram encontradas evidências fortes, que o caso precisa de investigação adicional ou que existem evidências fortes o suficiente para revisão de ban.
+O resultado final fica em uma destas situações:
 
-O scanner não aplica punições automaticamente. Ele apenas organiza as evidências encontradas para facilitar a análise.
+- `SEM BASE FORTE PARA BAN`: não apareceram indícios fortes na varredura;
+- `INVESTIGAR ANTES DE DECIDIR`: existem achados relevantes que ainda precisam ser confirmados;
+- `CASO FORTE PARA REVISÃO DE BAN`: foram encontrados sinais fortes em mais de uma categoria.
+
+O FlexScanner mostra os caminhos, arquivos e evidências que levaram ao resultado para facilitar a revisão do caso.
 
 ## Relatórios
 

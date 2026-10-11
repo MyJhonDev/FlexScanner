@@ -64,22 +64,22 @@ def calculate_verdict(findings: list[Finding], coverage: list[CoverageItem]) -> 
         code = "STRONG_EVIDENCE_REVIEW_FOR_BAN"
         headline = "Evidências fortes encontradas"
         action = (
-            "Há sinais fortes e independentes. Revise os itens de alto risco e confirme as evidências "
-            "antes de aplicar qualquer punição. Se forem confirmadas pelas regras da cup, o caso pode ser tratado como elegível para ban."
+            "Foram encontrados sinais fortes em mais de uma categoria. "
+            "Confirme os itens de Alto Risco; se baterem com as regras da cup, o caso tem base para ban."
         )
     elif high or len(medium) >= 2 or total_score >= 45:
         code = "INVESTIGATE_FURTHER"
-        headline = "Recomendado investigar melhor"
+        headline = "Há indícios que precisam de confirmação"
         action = (
-            "Existem indícios relevantes, mas o scanner não recomenda ban automático. "
-            "Confira os caminhos, arquivos e evidências listados antes de tomar uma decisão."
+            "Revise os arquivos, caminhos e evidências marcados. "
+            "Ainda falta confirmação para fechar o caso."
         )
     else:
         code = "NO_STRONG_EVIDENCE"
         headline = "Nenhuma evidência forte encontrada"
         action = (
-            "A varredura não encontrou evidência suficiente para recomendar ban. "
-            "Guarde o relatório caso seja necessário cruzar com outras provas."
+            "Não foram encontrados indícios fortes nesta varredura. "
+            "Use o relatório junto de outras provas, se existirem."
         )
 
     if inaccessible:
@@ -175,7 +175,6 @@ def render_text(report: dict, use_color: bool = False) -> str:
         title = f"{index:02d}. {finding['title']}"
         lines.append(f"{color}{BOLD}{title}{RESET}")
         lines.append(f"    Categoria : {finding['category']}")
-        lines.append(f"    Pontuação : {finding['score']}")
         if finding.get("path"):
             lines.append(f"    Caminho   : {finding['path']}")
         if finding.get("detail"):
@@ -188,7 +187,6 @@ def render_text(report: dict, use_color: bool = False) -> str:
     lines.append(f"{DIM}Scanner de integridade para Roblox no Android{RESET}")
     line()
     lines.append(f"Versão       : {report['version']}")
-    lines.append(f"Pontuação    : {verdict['score']}")
     lines.append(
         "Achados      : "
         f"{RED}{verdict['high_count']} alto{RESET} | "
@@ -244,13 +242,12 @@ def render_text(report: dict, use_color: bool = False) -> str:
         decision = "SEM BASE FORTE PARA BAN"
 
     lines.append(f"{verdict_color}{BOLD}{decision}{RESET}")
-    lines.append(f"Resultado     : {verdict['headline']}")
-    lines.append(f"Pontuação     : {verdict['score']}")
+    lines.append(f"Status        : {verdict['headline']}")
     lines.append("")
-    lines.append(f"{BOLD}Recomendação{RESET}")
+    lines.append(f"{BOLD}Próximo passo{RESET}")
     lines.append(verdict["action"])
     lines.append("")
-    lines.append(f"{DIM}O FlexScanner organiza evidências. A decisão final deve considerar o contexto e as regras da cup.{RESET}")
+    lines.append(f"{DIM}Use os achados junto das regras da cup e das demais provas do caso.{RESET}")
     line()
 
     return "\n".join(lines) + "\n"
