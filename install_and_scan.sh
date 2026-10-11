@@ -4,17 +4,17 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
-echo "Installing scanner dependencies..."
+echo "Preparando o FlexScanner..."
 pkg update -y
 pkg install -y python coreutils apksigner
 
 if [ ! -d "$HOME/storage/shared" ]; then
     echo
-    echo "Android will be asked to grant Termux access to shared storage."
-    echo "Grant the permission, then return to Termux."
+    echo "O Android vai pedir permissão para o Termux acessar os arquivos."
+    echo "Permita o acesso e volte para o Termux."
     termux-setup-storage || true
 fi
 
 echo
-echo "Starting read-only scan..."
+echo "Iniciando varredura..."
 bash "$PROJECT_DIR/scan.sh"

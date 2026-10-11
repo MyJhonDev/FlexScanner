@@ -40,15 +40,15 @@ Antes de mostrar o resultado, o scanner limpa a tela do Termux para deixar somen
 
 ## Níveis de risco
 
-### Low Risk
+### Baixo Risco
 
 Indícios fracos ou isolados que, sozinhos, não são suficientes para considerar o aparelho suspeito.
 
-### Medium Risk
+### Médio Risco
 
 Achados que merecem atenção e podem indicar presença de scripts, executores ou alterações fora do padrão.
 
-### High Risk
+### Alto Risco
 
 Evidências mais fortes, principalmente quando vários indicadores suspeitos aparecem juntos.
 
@@ -57,11 +57,11 @@ Evidências mais fortes, principalmente quando vários indicadores suspeitos apa
 No final da varredura, o FlexScanner mostra um resumo com:
 
 ```text
-HIGH RISK
-MEDIUM RISK
-LOW RISK
-SCAN COVERAGE
-FINAL VERDICT
+ALTO RISCO
+MÉDIO RISCO
+BAIXO RISCO
+COBERTURA DA VARREDURA
+VEREDITO FINAL
 ```
 
 O resultado final pode indicar que não foram encontradas evidências fortes, que o caso precisa de investigação adicional ou que existem evidências fortes o suficiente para revisão de ban.

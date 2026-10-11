@@ -63,10 +63,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
     if not roots:
         coverage.append(
             CoverageItem(
-                name="Shared storage",
+                name="Armazenamento compartilhado",
                 path="~/storage/shared",
                 status="unavailable",
-                detail="Shared storage was not accessible. Run termux-setup-storage and grant storage access.",
+                detail="O armazenamento compartilhado não pôde ser acessado. Execute termux-setup-storage e permita o acesso aos arquivos.",
             )
         )
         return findings, coverage, stats
@@ -75,10 +75,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
         stats["roots"].append(str(root))
         coverage.append(
             CoverageItem(
-                name="Shared storage",
+                name="Armazenamento compartilhado",
                 path=str(root),
                 status="readable",
-                detail="Accessible shared storage scanned read-only.",
+                detail="Armazenamento acessível analisado sem alterar ou apagar arquivos.",
             )
         )
 
@@ -100,10 +100,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="HIGH",
                             score=38,
-                            category="Storage",
-                            title="High-signal execution directory",
+                            category="Armazenamento",
+                            title="Pasta de execução automática suspeita",
                             path=str(full),
-                            detail=f"Directory name matches a common automatic execution location: {directory}",
+                            detail=f"O nome da pasta corresponde a um local comum de execução automática: {directory}",
                             evidence=[directory],
                         )
                     )
@@ -112,10 +112,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="MEDIUM",
                             score=28,
-                            category="Storage",
-                            title="Executor-branded directory",
+                            category="Armazenamento",
+                            title="Pasta associada a executor",
                             path=str(full),
-                            detail="Directory name matches configured executor artifact names.",
+                            detail="O nome da pasta corresponde a um executor conhecido nas regras do scanner.",
                             evidence=executor_hits,
                         )
                     )
@@ -124,10 +124,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="LOW",
                             score=6,
-                            category="Storage",
-                            title="Generic script/config directory",
+                            category="Armazenamento",
+                            title="Pasta genérica de scripts ou configurações",
                             path=str(full),
-                            detail="Generic directory that may be legitimate by itself.",
+                            detail="Essa pasta pode ser legítima quando aparece sozinha; foi registrada apenas como indício fraco.",
                             evidence=[directory],
                         )
                     )
@@ -148,13 +148,13 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="MEDIUM" if not in_trash else "HIGH",
                             score=24 if not in_trash else 40,
-                            category="Residual traces" if in_trash else "Storage",
-                            title="Suspicious artifact filename",
+                            category="Vestígios residuais" if in_trash else "Armazenamento",
+                            title="Arquivo com nome suspeito",
                             path=str(path),
                             detail=(
-                                "Filename matches configured executor artifact names."
+                                "O nome do arquivo corresponde a um executor conhecido nas regras do scanner."
                                 if not in_trash
-                                else "Suspicious artifact remains in an accessible trash/recycle location."
+                                else "O arquivo suspeito ainda existe em uma lixeira ou área de reciclagem acessível."
                             ),
                             evidence=name_hits,
                         )
@@ -185,10 +185,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="HIGH",
                             score=55 + min(15, len(indicator_hits) * 2),
-                            category="Lua analyzer",
-                            title="Multiple exploit-specific Lua indicators",
+                            category="Análise Lua",
+                            title="Vários indicadores específicos de exploit em Lua",
                             path=str(path),
-                            detail="Several configured exploit-environment APIs were found in the same script.",
+                            detail="O mesmo script contém várias APIs normalmente associadas a ambientes de exploit.",
                             evidence=sorted(indicator_hits + game_hits),
                         )
                     )
@@ -197,10 +197,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="MEDIUM",
                             score=32,
-                            category="Lua analyzer",
-                            title="Multiple suspicious Lua indicators",
+                            category="Análise Lua",
+                            title="Vários indicadores suspeitos em Lua",
                             path=str(path),
-                            detail="More than one configured exploit-environment indicator was found.",
+                            detail="Foram encontrados dois ou mais indicadores de ambiente de exploit no mesmo arquivo.",
                             evidence=sorted(indicator_hits + game_hits),
                         )
                     )
@@ -209,10 +209,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="LOW" if not in_trash else "MEDIUM",
                             score=10 if not in_trash else 25,
-                            category="Lua analyzer" if not in_trash else "Residual traces",
-                            title="Single suspicious Lua indicator",
+                            category="Análise Lua" if not in_trash else "Vestígios residuais",
+                            title="Indicador suspeito isolado em Lua",
                             path=str(path),
-                            detail="One suspicious indicator was found; this is not strong evidence by itself.",
+                            detail="Foi encontrado apenas um indicador. Sozinho, ele não é considerado evidência forte.",
                             evidence=sorted(indicator_hits + game_hits),
                         )
                     )
@@ -221,10 +221,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
                         Finding(
                             risk="LOW",
                             score=8,
-                            category="Residual traces",
-                            title="Deleted/trash Lua candidate",
+                            category="Vestígios residuais",
+                            title="Arquivo Lua encontrado em lixeira",
                             path=str(path),
-                            detail="Lua/Luau file is still present in an accessible trash/recycle location.",
+                            detail="Um arquivo Lua/Luau ainda está presente em uma lixeira ou área de reciclagem acessível.",
                             evidence=[suffix],
                         )
                     )
@@ -235,10 +235,10 @@ def scan_shared_storage(rules: Rules) -> tuple[list[Finding], list[CoverageItem]
         if stats["scan_limit_reached"]:
             coverage.append(
                 CoverageItem(
-                    name="Shared storage scan limit",
+                    name="Limite da varredura de armazenamento",
                     path=str(root),
                     status="partial",
-                    detail=f"Stopped after {MAX_FILES_TO_SCAN} files to prevent an unbounded scan.",
+                    detail=f"A varredura foi interrompida após {MAX_FILES_TO_SCAN} arquivos para evitar uma análise sem limite.",
                 )
             )
             break
@@ -267,13 +267,13 @@ def inspect_android_app_dirs(rules: Rules) -> tuple[list[Finding], list[Coverage
                         name=label,
                         path=str(path),
                         status="not-verified",
-                        detail="Path is absent or blocked by Android scoped-storage restrictions; this is not a clean result.",
+                        detail="O caminho não existe ou foi bloqueado pelas restrições do Android. Isso não significa que a área está limpa.",
                     )
                 )
             elif not path.is_dir():
                 item["status"] = "not-a-directory"
                 coverage.append(
-                    CoverageItem(label, str(path), "unexpected", "Expected a directory."))
+                    CoverageItem(label, str(path), "unexpected", "Era esperado encontrar uma pasta nesse caminho."))
             else:
                 # Merely being able to stat the directory does not guarantee recursive access.
                 readable_any = False
@@ -288,10 +288,10 @@ def inspect_android_app_dirs(rules: Rules) -> tuple[list[Finding], list[Coverage
                                 Finding(
                                     risk="HIGH",
                                     score=45,
-                                    category="Android app data",
-                                    title="Suspicious artifact inside Roblox app area",
+                                    category="Dados do aplicativo",
+                                    title="Artefato suspeito na área de dados do Roblox",
                                     path=str(fpath),
-                                    detail="Filename inside an accessible Roblox data/OBB path matches executor artifact names.",
+                                    detail="Um arquivo dentro da área acessível de dados/OBB do Roblox possui nome associado a executor.",
                                     evidence=hits,
                                 )
                             )
@@ -301,7 +301,7 @@ def inspect_android_app_dirs(rules: Rules) -> tuple[list[Finding], list[Coverage
                         name=label,
                         path=str(path),
                         status=item["status"],
-                        detail="Read-only recursive inspection attempted. Empty results may still reflect Android access restrictions.",
+                        detail="A inspeção foi feita sem alterar arquivos. Um resultado vazio ainda pode ocorrer por bloqueios de acesso do Android.",
                     )
                 )
         except PermissionError:
@@ -311,13 +311,13 @@ def inspect_android_app_dirs(rules: Rules) -> tuple[list[Finding], list[Coverage
                     name=label,
                     path=str(path),
                     status="not-verified",
-                    detail="Permission denied by Android. This area cannot be declared clean.",
+                    detail="O Android negou acesso a essa área. Ela não pode ser considerada limpa sem verificação.",
                 )
             )
         except OSError as exc:
             item["status"] = "os-error"
             coverage.append(
-                CoverageItem(label, str(path), "not-verified", f"OS error: {exc}"))
+                CoverageItem(label, str(path), "not-verified", f"Erro do sistema: {exc}"))
 
         details[label] = item
 

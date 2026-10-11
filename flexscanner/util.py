@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -32,8 +34,21 @@ def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
 
 
 def clear_terminal() -> None:
-    # ANSI clear + cursor home. Avoids depending exclusively on the `clear` binary.
-    print("\033[2J\033[H", end="", flush=True)
+    """Limpa tela e histórico visível do terminal antes do relatório."""
+    try:
+        if shutil.which("clear"):
+            subprocess.run(["clear"], check=False)
+    except OSError:
+        pass
+
+    # 3J: apaga o scrollback quando suportado.
+    # 2J: limpa a tela atual.
+    # H : move o cursor para o início.
+    try:
+        sys.stdout.write("\033[3J\033[2J\033[H")
+        sys.stdout.flush()
+    except (OSError, ValueError):
+        pass
 
 
 def safe_realpath(path: Path) -> Path:

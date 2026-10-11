@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from . import __version__
@@ -12,10 +13,10 @@ from .util import clear_terminal
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="FlexScanner - scanner local de integridade para Roblox no Android")
-    parser.add_argument("--no-clear", action="store_true", help="Do not clear the terminal before showing the report")
-    parser.add_argument("--output-dir", default="reports", help="Directory where report files are saved")
-    parser.add_argument("--config", default="config/signatures.json", help="Rules/signatures JSON path")
+    parser = argparse.ArgumentParser(description="FlexScanner - scanner de integridade para Roblox no Android")
+    parser.add_argument("--no-clear", action="store_true", help="Não limpar o terminal antes de exibir o relatório")
+    parser.add_argument("--output-dir", default="reports", help="Pasta onde os relatórios serão salvos")
+    parser.add_argument("--config", default="config/signatures.json", help="Arquivo JSON com as regras e assinaturas")
     return parser.parse_args()
 
 
@@ -66,9 +67,10 @@ def main() -> int:
     if not args.no_clear:
         clear_terminal()
 
-    print(render_text(report), end="")
-    print(f"JSON report: {json_path}")
-    print(f"Text report: {text_path}")
+    use_color = sys.stdout.isatty()
+    print(render_text(report, use_color=use_color), end="")
+    print(f"Relatório JSON : {json_path}")
+    print(f"Relatório TXT  : {text_path}")
     return 0
 
 

@@ -89,20 +89,20 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
     if not installed:
         coverage.append(
             CoverageItem(
-                name="Roblox package",
+                name="Pacote do Roblox",
                 path=package,
                 status="not-detected",
-                detail="The configured Roblox package was not detected by Package Manager queries.",
+                detail="O pacote configurado do Roblox não foi encontrado pelo gerenciador de pacotes do Android.",
             )
         )
         return findings, coverage, result
 
     coverage.append(
         CoverageItem(
-            name="Roblox package",
+            name="Pacote do Roblox",
             path=package,
             status="detected",
-            detail="Package Manager detected the configured Roblox package.",
+            detail="O gerenciador de pacotes do Android detectou o pacote configurado do Roblox.",
         )
     )
 
@@ -111,10 +111,10 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
             Finding(
                 risk="LOW",
                 score=8,
-                category="Roblox integrity",
-                title="Installer could not be identified",
+                category="Integridade do Roblox",
+                title="Instalador do Roblox não identificado",
                 path=package,
-                detail="Package Manager did not expose an installer identity. This is inconclusive.",
+                detail="O Android não informou qual aplicativo instalou o Roblox. Esse resultado é inconclusivo.",
             )
         )
     elif installer.lower() not in rules.trusted_installers:
@@ -122,10 +122,10 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
             Finding(
                 risk="MEDIUM",
                 score=22,
-                category="Roblox integrity",
-                title="Untrusted or unexpected installer",
+                category="Integridade do Roblox",
+                title="Instalador inesperado",
                 path=package,
-                detail=f"Installer reported by Android: {installer}. Sideloading alone does not prove modification.",
+                detail=f"Instalador informado pelo Android: {installer}. Instalação externa, sozinha, não prova modificação.",
                 evidence=[installer],
             )
         )
@@ -150,10 +150,10 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
                     Finding(
                         risk="HIGH",
                         score=90,
-                        category="Roblox integrity",
-                        title="APK signing certificate mismatch",
+                        category="Integridade do Roblox",
+                        title="Certificado de assinatura do APK diferente do esperado",
                         path=raw,
-                        detail="APK certificate does not match the configured trusted Roblox certificate allowlist.",
+                        detail="O certificado encontrado no APK não corresponde aos certificados confiáveis configurados para o Roblox.",
                         evidence=sorted(certs),
                     )
                 )
@@ -163,19 +163,19 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
     if apk_paths and readable_apks == 0:
         coverage.append(
             CoverageItem(
-                name="Roblox APK bytes/certificate",
+                name="APK e certificado do Roblox",
                 path="; ".join(apk_paths),
                 status="not-verified",
-                detail="Package paths were found, but Termux could not read the APK bytes. Hash/certificate checks are therefore inconclusive.",
+                detail="O caminho do APK foi encontrado, mas o Termux não conseguiu ler o arquivo. A checagem de hash e certificado ficou inconclusiva.",
             )
         )
     elif readable_apks:
         coverage.append(
             CoverageItem(
-                name="Roblox APK bytes/certificate",
+                name="APK e certificado do Roblox",
                 path="; ".join(apk_paths),
                 status="readable",
-                detail="Readable APK files were hashed and certificate inspection was attempted with apksigner.",
+                detail="Os APKs acessíveis tiveram o hash calculado e o certificado foi verificado com apksigner.",
             )
         )
 

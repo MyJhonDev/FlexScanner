@@ -11,6 +11,22 @@ from .models import CoverageItem, Finding
 RISK_ORDER = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
 
 
+STATUS_LABELS = {
+    "readable": "VERIFICADO",
+    "detected": "DETECTADO",
+    "not-detected": "NÃO DETECTADO",
+    "not-verified": "NÃO VERIFICADO",
+    "partial": "PARCIAL",
+    "unavailable": "INDISPONÍVEL",
+    "unexpected": "INESPERADO",
+    "empty-or-blocked": "VAZIO OU BLOQUEADO",
+    "permission-denied": "ACESSO NEGADO",
+    "not-found-or-blocked": "NÃO ENCONTRADO OU BLOQUEADO",
+    "not-a-directory": "CAMINHO INVÁLIDO",
+    "os-error": "ERRO DO SISTEMA",
+}
+
+
 def dedupe_findings(findings: list[Finding]) -> list[Finding]:
     seen: set[tuple] = set()
     result: list[Finding] = []
@@ -35,28 +51,42 @@ def calculate_verdict(findings: list[Finding], coverage: list[CoverageItem]) -> 
     medium = [f for f in findings if f.risk == "MEDIUM"]
     inaccessible = [c for c in coverage if c.status in {"not-verified", "partial", "unavailable"}]
 
-    # Strong result requires more than one independent strong signal, or one certificate mismatch.
-    cert_mismatch = any(f.title == "APK signing certificate mismatch" for f in high)
+    cert_mismatch = any(
+        f.title in {
+            "APK signing certificate mismatch",
+            "Certificado de assinatura do APK diferente do esperado",
+        }
+        for f in high
+    )
     strong_categories = {f.category for f in high}
 
-    if cert_mismatch or len(high) >= 2 and len(strong_categories) >= 2:
+    if cert_mismatch or (len(high) >= 2 and len(strong_categories) >= 2):
         code = "STRONG_EVIDENCE_REVIEW_FOR_BAN"
-        headline = "Strong evidence detected"
+        headline = "Evidências fortes encontradas"
         action = (
-            "Human review is required immediately. If the evidence is confirmed under the cup rules, "
-            "the account can be treated as ban-eligible. Do not auto-ban from this scanner alone."
+            "Há sinais fortes e independentes. Revise os itens de alto risco e confirme as evidências "
+            "antes de aplicar qualquer punição. Se forem confirmadas pelas regras da cup, o caso pode ser tratado como elegível para ban."
         )
     elif high or len(medium) >= 2 or total_score >= 45:
         code = "INVESTIGATE_FURTHER"
-        headline = "Further investigation recommended"
-        action = "Do not ban automatically. Review the listed paths and evidence before taking action."
+        headline = "Recomendado investigar melhor"
+        action = (
+            "Existem indícios relevantes, mas o scanner não recomenda ban automático. "
+            "Confira os caminhos, arquivos e evidências listados antes de tomar uma decisão."
+        )
     else:
         code = "NO_STRONG_EVIDENCE"
-        headline = "No strong evidence detected"
-        action = "No direct ban recommendation from this scan. Preserve the report if additional review is needed."
+        headline = "Nenhuma evidência forte encontrada"
+        action = (
+            "A varredura não encontrou evidência suficiente para recomendar ban. "
+            "Guarde o relatório caso seja necessário cruzar com outras provas."
+        )
 
     if inaccessible:
-        action += " Some Android areas were not fully verifiable, so the result is not a guarantee of a clean device."
+        action += (
+            " Algumas áreas do Android não puderam ser verificadas completamente, "
+            "então o resultado não garante que o aparelho esteja totalmente limpo."
+        )
 
     return {
         "code": code,
@@ -86,12 +116,12 @@ def build_report(
         "scanner": "FlexScanner",
         "version": scanner_version,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "mode": "read-only-local",
-        "privacy": "No file contents are uploaded by this project.",
+        "mode": "somente-leitura",
+        "privacy": "O FlexScanner não envia o conteúdo dos arquivos analisados.",
         "limitations": [
-            "Deleted files cannot be reliably recovered or proven absent without privileged/raw-storage forensic access.",
-            "Android scoped storage can block Android/data, Android/obb, and APK bytes.",
-            "A sideloaded installer or a Lua file alone is not proof of cheating.",
+            "Arquivos realmente apagados não podem ser recuperados de forma confiável sem acesso forense privilegiado ao armazenamento.",
+            "O Android pode bloquear Android/data, Android/obb e os próprios arquivos APK.",
+            "Um arquivo Lua ou uma instalação externa, isoladamente, não prova uso de cheat.",
         ],
         "verdict": verdict,
         "coverage": [c.to_dict() for c in coverage],
@@ -107,74 +137,120 @@ def save_json(report: dict, path: Path) -> None:
 
 
 def save_text(report: dict, path: Path) -> None:
-    path.write_text(render_text(report), encoding="utf-8")
+    path.write_text(render_text(report, use_color=False), encoding="utf-8")
 
 
-def render_text(report: dict) -> str:
-    lines: list[str] = []
-    width = 78
-
-    def rule(char: str = "=") -> None:
-        lines.append(char * width)
-
-    rule()
-    lines.append("FLEXSCANNER")
-    lines.append(f"Version: {report['version']}")
-    lines.append(f"UTC: {report['timestamp_utc']}")
-    rule()
-
+def render_text(report: dict, use_color: bool = False) -> str:
     grouped: dict[str, list[dict]] = defaultdict(list)
     for finding in report["findings"]:
         grouped[finding["risk"]].append(finding)
 
-    for risk, label in (("HIGH", "HIGH RISK"), ("MEDIUM", "MEDIUM RISK"), ("LOW", "LOW RISK")):
-        lines.append("")
-        rule("-")
-        lines.append(f"{label} | {len(grouped[risk])} finding(s)")
-        rule("-")
-        if not grouped[risk]:
-            lines.append("None detected.")
-            continue
+    verdict = report["verdict"]
+    width = 72
+    lines: list[str] = []
 
-        for idx, finding in enumerate(grouped[risk], 1):
-            lines.append(f"[{idx}] {finding['title']}")
-            lines.append(f"    Category: {finding['category']}")
-            lines.append(f"    Score: {finding['score']}")
-            if finding.get("path"):
-                lines.append(f"    Path: {finding['path']}")
-            if finding.get("detail"):
-                lines.append(f"    Detail: {finding['detail']}")
-            if finding.get("evidence"):
-                lines.append("    Evidence: " + ", ".join(finding["evidence"]))
+    RESET = "\033[0m" if use_color else ""
+    BOLD = "\033[1m" if use_color else ""
+    DIM = "\033[2m" if use_color else ""
+    RED = "\033[91m" if use_color else ""
+    YELLOW = "\033[93m" if use_color else ""
+    BLUE = "\033[94m" if use_color else ""
+    GREEN = "\033[92m" if use_color else ""
+    CYAN = "\033[96m" if use_color else ""
+
+    def visible_len(text: str) -> int:
+        # Só usado para títulos simples sem ANSI no conteúdo calculado.
+        import re
+        return len(re.sub(r"\x1b\[[0-9;]*m", "", text))
+
+    def line(char: str = "─") -> None:
+        lines.append(DIM + (char * width) + RESET)
+
+    def section(title: str, color: str = "") -> None:
+        lines.append("")
+        lines.append(f"{color}{BOLD}{title}{RESET}")
+        line()
+
+    def item_block(index: int, finding: dict, color: str) -> None:
+        title = f"{index:02d}. {finding['title']}"
+        lines.append(f"{color}{BOLD}{title}{RESET}")
+        lines.append(f"    Categoria : {finding['category']}")
+        lines.append(f"    Pontuação : {finding['score']}")
+        if finding.get("path"):
+            lines.append(f"    Caminho   : {finding['path']}")
+        if finding.get("detail"):
+            lines.append(f"    Detalhe   : {finding['detail']}")
+        if finding.get("evidence"):
+            lines.append(f"    Evidências: {', '.join(finding['evidence'])}")
+        lines.append("")
+
+    lines.append(f"{CYAN}{BOLD}FLEXSCANNER{RESET}")
+    lines.append(f"{DIM}Scanner de integridade para Roblox no Android{RESET}")
+    line()
+    lines.append(f"Versão       : {report['version']}")
+    lines.append(f"Pontuação    : {verdict['score']}")
+    lines.append(
+        "Achados      : "
+        f"{RED}{verdict['high_count']} alto{RESET} | "
+        f"{YELLOW}{verdict['medium_count']} médio{RESET} | "
+        f"{BLUE}{verdict['low_count']} baixo{RESET}"
+    )
+    if verdict["coverage_warnings"]:
+        lines.append(f"Avisos       : {verdict['coverage_warnings']} área(s) não verificada(s) por completo")
+
+    risk_sections = (
+        ("HIGH", "ALTO RISCO", RED),
+        ("MEDIUM", "MÉDIO RISCO", YELLOW),
+        ("LOW", "BAIXO RISCO", BLUE),
+    )
+
+    for risk, label, color in risk_sections:
+        findings = grouped[risk]
+        section(f"{label}  ({len(findings)})", color)
+        if not findings:
+            lines.append(f"{DIM}Nenhum item encontrado nesta categoria.{RESET}")
+            continue
+        for idx, finding in enumerate(findings, 1):
+            item_block(idx, finding, color)
+
+    section("COBERTURA DA VARREDURA", CYAN)
+    if not report["coverage"]:
+        lines.append(f"{DIM}Nenhuma informação de cobertura disponível.{RESET}")
+    else:
+        for item in report["coverage"]:
+            status_raw = item["status"]
+            status = STATUS_LABELS.get(status_raw, status_raw.upper())
+            status_color = (
+                GREEN if status_raw in {"readable", "detected"}
+                else YELLOW if status_raw in {"partial", "empty-or-blocked", "not-detected"}
+                else RED
+            )
+            lines.append(f"{status_color}{BOLD}[{status}]{RESET} {item['name']}")
+            lines.append(f"    Caminho: {item['path']}")
+            if item.get("detail"):
+                lines.append(f"    Detalhe: {item['detail']}")
             lines.append("")
 
-    lines.append("")
-    rule("-")
-    lines.append("SCAN COVERAGE")
-    rule("-")
-    for item in report["coverage"]:
-        lines.append(f"[{item['status'].upper()}] {item['name']}")
-        lines.append(f"    Path: {item['path']}")
-        if item.get("detail"):
-            lines.append(f"    Detail: {item['detail']}")
+    section("VEREDITO FINAL", CYAN)
 
-    verdict = report["verdict"]
+    if verdict["code"] == "STRONG_EVIDENCE_REVIEW_FOR_BAN":
+        verdict_color = RED
+        decision = "CASO FORTE PARA REVISÃO DE BAN"
+    elif verdict["code"] == "INVESTIGATE_FURTHER":
+        verdict_color = YELLOW
+        decision = "INVESTIGAR ANTES DE DECIDIR"
+    else:
+        verdict_color = GREEN
+        decision = "SEM BASE FORTE PARA BAN"
+
+    lines.append(f"{verdict_color}{BOLD}{decision}{RESET}")
+    lines.append(f"Resultado     : {verdict['headline']}")
+    lines.append(f"Pontuação     : {verdict['score']}")
     lines.append("")
-    rule()
-    lines.append("FINAL VERDICT")
-    rule()
-    lines.append(f"Result: {verdict['headline']}")
-    lines.append(f"Code: {verdict['code']}")
-    lines.append(f"Risk score: {verdict['score']}")
-    lines.append(
-        f"Findings: High={verdict['high_count']} | Medium={verdict['medium_count']} | Low={verdict['low_count']}"
-    )
-    lines.append(f"Coverage warnings: {verdict['coverage_warnings']}")
-    lines.append("")
-    lines.append("Recommended action:")
+    lines.append(f"{BOLD}Recomendação{RESET}")
     lines.append(verdict["action"])
     lines.append("")
-    lines.append("Important: this scanner is an evidence triage tool, not an automatic punishment engine.")
-    rule()
+    lines.append(f"{DIM}O FlexScanner organiza evidências. A decisão final deve considerar o contexto e as regras da cup.{RESET}")
+    line()
 
     return "\n".join(lines) + "\n"
