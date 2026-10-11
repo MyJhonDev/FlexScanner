@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import re
 import shutil
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .models import CoverageItem, Finding
 from .rules import Rules
 from .util import run_cmd, sha256_file
+
+SAO_PAULO_TZ = "America/Sao_Paulo"
 
 
 def _query_installer(package: str) -> tuple[str | None, str]:
@@ -36,17 +40,78 @@ def _query_apk_paths(package: str) -> list[str]:
     return []
 
 
-def _query_version(package: str) -> dict:
+def _device_timezone() -> str | None:
+    rc, output = run_cmd(["getprop", "persist.sys.timezone"])
+    value = output.strip() if rc == 0 else ""
+    return value or None
+
+
+def _to_sao_paulo(raw: str | None, source_timezone: str | None) -> str | None:
+    if not raw:
+        return None
+
+    raw = raw.strip()
+    formats = (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S.%f",
+        "%Y-%m-%d %H:%M:%S %Z",
+    )
+
+    parsed = None
+    for fmt in formats:
+        try:
+            parsed = datetime.strptime(raw, fmt)
+            break
+        except ValueError:
+            continue
+
+    if parsed is None:
+        return raw
+
+    try:
+        source = ZoneInfo(source_timezone) if source_timezone else ZoneInfo(SAO_PAULO_TZ)
+    except ZoneInfoNotFoundError:
+        source = ZoneInfo(SAO_PAULO_TZ)
+
+    target = ZoneInfo(SAO_PAULO_TZ)
+    localized = parsed.replace(tzinfo=source).astimezone(target)
+    return localized.strftime("%d/%m/%Y às %H:%M:%S")
+
+
+def _query_package_metadata(package: str) -> dict:
     rc, output = run_cmd(["dumpsys", "package", package], timeout=18)
-    result = {"version_name": None, "version_code": None}
+    result = {
+        "version_name": None,
+        "version_code": None,
+        "first_install_time_raw": None,
+        "last_update_time_raw": None,
+        "first_install_time_sp": None,
+        "last_update_time_sp": None,
+        "device_timezone": _device_timezone(),
+    }
     if rc != 0:
         return result
+
     name = re.search(r"versionName=([^\s]+)", output)
     code = re.search(r"versionCode=(\d+)", output)
+    first = re.search(r"firstInstallTime=([^\n\r]+)", output)
+    updated = re.search(r"lastUpdateTime=([^\n\r]+)", output)
+
     if name:
         result["version_name"] = name.group(1)
     if code:
         result["version_code"] = code.group(1)
+    if first:
+        result["first_install_time_raw"] = first.group(1).strip()
+    if updated:
+        result["last_update_time_raw"] = updated.group(1).strip()
+
+    result["first_install_time_sp"] = _to_sao_paulo(
+        result["first_install_time_raw"], result["device_timezone"]
+    )
+    result["last_update_time_sp"] = _to_sao_paulo(
+        result["last_update_time_raw"], result["device_timezone"]
+    )
     return result
 
 
@@ -73,8 +138,8 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
 
     installer, installer_raw = _query_installer(package)
     apk_paths = _query_apk_paths(package)
-    version = _query_version(package)
-    installed = bool(apk_paths or installer_raw)
+    metadata = _query_package_metadata(package)
+    installed = bool(apk_paths or installer_raw or metadata.get("version_name") or metadata.get("first_install_time_raw"))
 
     result = {
         "package": package,
@@ -83,7 +148,7 @@ def inspect_roblox_package(rules: Rules) -> tuple[list[Finding], list[CoverageIt
         "apk_paths": apk_paths,
         "apk_sha256": {},
         "certificates": {},
-        **version,
+        **metadata,
     }
 
     if not installed:

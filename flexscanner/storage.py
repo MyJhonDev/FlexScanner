@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from typing import Iterable
 
 from .models import CoverageItem, Finding
@@ -10,6 +12,46 @@ from .util import safe_realpath
 
 MAX_TEXT_FILE_BYTES = 8 * 1024 * 1024
 MAX_FILES_TO_SCAN = 120_000
+SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
+
+
+def _format_epoch_sp(value: float | int | None) -> str | None:
+    if value is None or value <= 0:
+        return None
+    try:
+        return datetime.fromtimestamp(value, tz=SAO_PAULO_TZ).strftime("%d/%m/%Y às %H:%M:%S")
+    except (OSError, OverflowError, ValueError):
+        return None
+
+
+def _path_timestamps(path: Path) -> dict:
+    result = {
+        "created_sp": None,
+        "modified_sp": None,
+        "creation_source": None,
+    }
+    try:
+        st = path.stat()
+        result["modified_sp"] = _format_epoch_sp(st.st_mtime)
+        birth = getattr(st, "st_birthtime", None)
+        if birth and birth > 0:
+            result["created_sp"] = _format_epoch_sp(birth)
+            result["creation_source"] = "filesystem"
+    except (OSError, PermissionError):
+        return result
+
+    if result["created_sp"] is None:
+        from .util import run_cmd
+        rc, output = run_cmd(["stat", "-c", "%W", str(path)])
+        try:
+            birth_epoch = int(output.strip()) if rc == 0 else 0
+        except ValueError:
+            birth_epoch = 0
+        if birth_epoch > 0:
+            result["created_sp"] = _format_epoch_sp(birth_epoch)
+            result["creation_source"] = "filesystem"
+
+    return result
 
 
 def candidate_shared_roots() -> list[Path]:
@@ -258,7 +300,7 @@ def inspect_android_app_dirs(rules: Rules) -> tuple[list[Finding], list[Coverage
     details: dict = {}
 
     for label, path in targets.items():
-        item = {"path": str(path), "status": "unknown", "files_seen": 0}
+        item = {"path": str(path), "status": "unknown", "files_seen": 0, "created_sp": None, "modified_sp": None, "creation_source": None}
         try:
             if not path.exists():
                 item["status"] = "not-found-or-blocked"
@@ -275,6 +317,7 @@ def inspect_android_app_dirs(rules: Rules) -> tuple[list[Finding], list[Coverage
                 coverage.append(
                     CoverageItem(label, str(path), "unexpected", "Era esperado encontrar uma pasta nesse caminho."))
             else:
+                item.update(_path_timestamps(path))
                 # Merely being able to stat the directory does not guarantee recursive access.
                 readable_any = False
                 for current, _dirs, files in safe_walk(path):

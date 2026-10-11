@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from .models import CoverageItem, Finding
@@ -116,6 +117,7 @@ def build_report(
         "scanner": "FlexScanner",
         "version": scanner_version,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_sao_paulo": datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y às %H:%M:%S"),
         "mode": "somente-leitura",
         "privacy": "O FlexScanner não envia o conteúdo dos arquivos analisados.",
         "limitations": [
@@ -183,10 +185,14 @@ def render_text(report: dict, use_color: bool = False) -> str:
             lines.append(f"    Evidências: {', '.join(finding['evidence'])}")
         lines.append("")
 
+    package_info = report.get("roblox_package", {})
+    android_dirs = report.get("android_app_dirs", {})
+
     lines.append(f"{CYAN}{BOLD}FLEXSCANNER{RESET}")
     lines.append(f"{DIM}Scanner de integridade para Roblox no Android{RESET}")
     line()
     lines.append(f"Versão       : {report['version']}")
+    lines.append(f"Varredura    : {report.get('timestamp_sao_paulo', 'indisponível')} (São Paulo)")
     lines.append(
         "Achados      : "
         f"{RED}{verdict['high_count']} alto{RESET} | "
@@ -195,6 +201,31 @@ def render_text(report: dict, use_color: bool = False) -> str:
     )
     if verdict["coverage_warnings"]:
         lines.append(f"Avisos       : {verdict['coverage_warnings']} área(s) não verificada(s) por completo")
+
+    section("INFORMAÇÕES DO ROBLOX", CYAN)
+    installed = package_info.get("installed")
+    lines.append(f"Roblox instalado : {'SIM' if installed else 'NÃO'}")
+    lines.append(f"Pacote            : {package_info.get('package') or 'indisponível'}")
+    if installed:
+        lines.append(f"Versão            : {package_info.get('version_name') or 'indisponível'}")
+        lines.append(f"Instalado em      : {package_info.get('first_install_time_sp') or 'indisponível'}")
+        lines.append(f"Última atualização: {package_info.get('last_update_time_sp') or 'indisponível'}")
+        lines.append(f"Instalador        : {package_info.get('installer') or 'não identificado'}")
+
+    for key, label in (("Android/data", "Pasta data"), ("Android/obb", "Pasta OBB")):
+        info = android_dirs.get(key, {})
+        status_raw = info.get("status", "unknown")
+        exists_text = "ACESSÍVEL" if status_raw in {"readable", "empty-or-blocked"} else "NÃO VERIFICADA"
+        lines.append("")
+        lines.append(f"{label:17}: {exists_text}")
+        if info.get("created_sp"):
+            lines.append(f"  Criada em        : {info['created_sp']}")
+        else:
+            lines.append("  Criada em        : indisponível pelo sistema de arquivos")
+        if info.get("modified_sp"):
+            lines.append(f"  Última alteração : {info['modified_sp']}")
+        if info.get("files_seen") is not None:
+            lines.append(f"  Arquivos vistos  : {info.get('files_seen', 0)}")
 
     risk_sections = (
         ("HIGH", "ALTO RISCO", RED),

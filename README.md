@@ -12,9 +12,12 @@ Ele faz a varredura das áreas que consegue acessar, organiza os achados por ní
 - padrões suspeitos dentro de scripts, como `loadstring`, `HttpGet`, `getgenv` e outros indicadores;
 - arquivos e pastas residuais que ainda estejam acessíveis;
 - instalação do Roblox (`com.roblox.client`);
+- data da primeira instalação e da última atualização, quando o Android informar;
 - instalador do aplicativo;
 - APKs instalados, SHA-256 e certificado quando disponíveis;
-- `Android/data/com.roblox.client` e `Android/obb/com.roblox.client` quando o Android permite acesso.
+- `Android/data/com.roblox.client` e `Android/obb/com.roblox.client` quando o Android permite acesso;
+- data de criação das pastas quando o sistema de arquivos disponibilizar essa informação;
+- última alteração das pastas acessíveis.
 
 O scanner não executa os arquivos encontrados e não apaga nada do aparelho.
 
@@ -85,7 +88,7 @@ O arquivo `.txt` contém o relatório legível e o `.json` guarda os mesmos dado
 
 ## Limitações
 
-Algumas versões do Android podem bloquear o acesso a `Android/data`, `Android/obb` e arquivos internos de outros aplicativos.
+Algumas versões do Android podem bloquear o acesso a `Android/data`, `Android/obb` e arquivos internos de outros aplicativos. O FlexScanner também não tenta acessar histórico privado de navegadores ou dados internos de outros apps.
 
 Quando isso acontece, o FlexScanner mostra a área como não verificada em vez de considerar que ela está limpa.
 
